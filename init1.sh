@@ -1,16 +1,17 @@
 #!/bin/bash
-export MASTER_ADDR=192.168.1.101
-export MASTER_PORT=29500
-export GLOO_SOCKET_IFNAME=eno1
+# export MASTER_ADDR=192.168.1.101
+# export MASTER_ADDR=192.168.1.100
+# export MASTER_PORT=29500
+# export GLOO_SOCKET_IFNAME=eno1
 
-kill_children() {
-  for PID in ${PIDS[*]}; do
-    kill -TERM $PID
-  done
-}
+# kill_children() {
+#   for PID in ${PIDS[*]}; do
+#     kill -TERM $PID
+#   done
+# }
 
 NODE=1 #Change this for each machine indexed with 0, 1, 2 ... N
-RANKS_PER_NODE=8 #For P3.16x machine
+RANKS_PER_NODE=1 #For P3.16x machine
 WORLD_NODE=2
 
 # for i in $(seq 0 7); do
@@ -26,7 +27,7 @@ WORLD_NODE=2
 python ./dist.py  \
      --world_size $((WORLD_NODE * RANKS_PER_NODE)) \
      --node $NODE \
-     --ranks_per_node 8 \
+     --ranks_per_node $RANKS_PER_NODE \
 
 # PIDS[$LOCAL_RANK]=$!
 

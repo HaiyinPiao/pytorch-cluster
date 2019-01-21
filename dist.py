@@ -2,12 +2,13 @@
 #!/usr/bin/env python
 import os
 import torch
+import numpy as np
 import torch.distributed as dist
 from torch.multiprocessing import Process
 import argparse
 
 """Blocking point-to-point communication."""
-def run(rank, size):
+def point_comm_run(rank, size):
     tensor = torch.zeros(1)
     # Master Proess
     if rank == 0:
@@ -21,11 +22,39 @@ def run(rank, size):
         dist.recv(tensor=tensor, src=0)
     print('Rank ', rank, ' has data ', tensor[0])
 
+"""broadcast-gather style communication"""
+def run(rank, size):
+    t = torch.tensor([rank for _ in range(1)])
+
+    for i in range(10):
+        print("----gather-------")
+        if rank==0:
+            gather_t = [torch.ones_like(t) for _ in range(size)]
+            dist.gather(tensor=t, dst=0, gather_list=gather_t)
+            print(gather_t)
+        else:
+            t.add_(rank)
+            dist.gather(tensor=t, dst=0, gather_list=[])
+            print(t)
+
+        # t.add_(1)
+
+        print("----broadcast-------")
+        if rank==0:
+            b = torch.tensor([i for _ in range(1)])
+            dist.broadcast(tensor=b, src=0 )
+            print(b)
+        else:
+            dist.broadcast(tensor=t, src=0 )
+            print(t)
+
+
 
 def init_processes(rank, size, fn, backend='gloo'):
     """ Initialize the distributed environment. """
-    # os.environ['MASTER_ADDR'] = '127.0.0.1'
-    # os.environ['MASTER_PORT'] = '29500'
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
+    # os.environ['MASTER_ADDR'] = '192.168.1.102'
+    os.environ['MASTER_PORT'] = '29500'
     dist.init_process_group(backend, rank=rank, world_size=size)
     fn(rank, size)
 
@@ -37,12 +66,6 @@ if __name__ == "__main__":
     parser.add_argument('--ranks_per_node', type=int, default = None)
     args = parser.parse_args()
 
-    processes = []
-    for rank in range(args.node*args.ranks_per_node,(args.node+1)*args.ranks_per_node):
-        print(args.node, rank)
-        p = Process(target=init_processes, args=(rank, args.world_size, run))
-        p.start()
-        processes.append(p)
-
-    for p in processes:
-        p.join()
+    rank = args.node
+    print( rank )
+    init_processes( rank=rank, size=args.world_size, fn=run, backend='gloo' )
